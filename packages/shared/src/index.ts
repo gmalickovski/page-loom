@@ -9,3 +9,5 @@ export interface BookTemplateLot {
   startPage: number;
   endPage: number;
 }
+
+export { supabase } from "./supabaseClient";
