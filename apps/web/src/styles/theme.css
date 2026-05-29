@@ -1,0 +1,38 @@
+:root {
+  --color-bg: #faf8f5;
+  --color-bg-alt: #f2ede6;
+  --color-sidebar: #eee7dc;
+  --color-text: #2d2420;
+  --color-secondary: #7a6e68;
+  --color-muted: #a89e96;
+  --color-accent: #c2773a;
+  --color-accent-faint: rgba(194, 119, 58, 0.1);
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border-mid: rgba(0, 0, 0, 0.12);
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --shadow-soft: 0 8px 22px rgba(80, 50, 20, 0.14);
+  --radius-ui: 8px;
+}
+
+@keyframes bsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.988);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bookOpen {
+  0% {
+    transform: perspective(900px) rotateY(0deg);
+  }
+
+  100% {
+    transform: perspective(900px) rotateY(-180deg);
+  }
+}

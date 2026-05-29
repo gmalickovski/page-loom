@@ -1,0 +1,20 @@
+{
+  "name": "pageloom",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @pageloom/web",
+    "build": "npm run build -w @pageloom/web",
+    "preview": "npm run preview -w @pageloom/web",
+    "typecheck": "npm run typecheck -w @pageloom/web"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  }
+}
