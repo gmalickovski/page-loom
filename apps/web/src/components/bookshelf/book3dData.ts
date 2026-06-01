@@ -54,7 +54,7 @@ export function toComponenteBook3DData(book: PlannerBook): BookData {
   // Page 12 is the final inside cover (Colophon / Ficha Técnica)
   annotations[12] = {
     title: "Ficha Técnica",
-    content: `COLOFÃO PREMIUM\n\nEste planejador foi encadernado digitalmente com tecnologia PageLoom.\n\nEspecificações de Fabricação:\n• Formato: Diário A5 Real\n• Dimensões: 148 x 210 mm\n• Capa: Personalizada\n• Miolo: Pólen Natural 90g/m²\n• Páginas: ${book.pages} págs. (Modelo 3D)\n\nDescrição do Livro:\n"${book.description || "Nenhuma descrição informada pelo criador do book."}"\n\nEncadernado eletronicamente em:\n${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(baseDate + "T12:00:00"))}.`,
+    content: `COLOFÃO PREMIUM\n\nEste planejador foi encadernado digitalmente com tecnologia PageLoom.\n\nEspecificações de Fabricação:\n• Formato: Diário A5 Real\n• Dimensões: 148 x 210 mm\n• Capa: Personalizada\n• Páginas Internas: Pólen Natural 90g/m²\n• Quantidade: ${book.pages} págs. (Modelo 3D)\n\nDescrição do Livro:\n"${book.description || "Nenhuma descrição informada pelo criador do book."}"\n\nEncadernado eletronicamente em:\n${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(baseDate + "T12:00:00"))}.`,
     date: baseDate,
     paperStyle: PaperStyle.BLANK, // Blank paper style for clean text presentation
   };

@@ -23,6 +23,7 @@ export function BookOpenPlanner({
 
   // local state for page turn animation triggers
   const [isFlipping, setIsFlipping] = useState(false);
+  const [mobileSide, setMobileSide] = useState<"left" | "right">("left");
 
   useEffect(() => {
     setIsFlipping(true);
@@ -42,14 +43,40 @@ export function BookOpenPlanner({
 
   // Navigation helpers
   const goPrev = () => {
-    if (activeIndex > 0) {
-      onNavigatePage(pages[activeIndex - 1]);
+    if (compact) {
+      if (mobileSide === "right") {
+        setMobileSide("left");
+      } else if (activeIndex > 0) {
+        setIsFlipping(true);
+        setTimeout(() => {
+          onNavigatePage(pages[activeIndex - 1]);
+          setMobileSide("right");
+          setIsFlipping(false);
+        }, 260);
+      }
+    } else {
+      if (activeIndex > 0) {
+        onNavigatePage(pages[activeIndex - 1]);
+      }
     }
   };
 
   const goNext = () => {
-    if (activeIndex < pages.length - 1) {
-      onNavigatePage(pages[activeIndex + 1]);
+    if (compact) {
+      if (mobileSide === "left") {
+        setMobileSide("right");
+      } else if (activeIndex < pages.length - 1) {
+        setIsFlipping(true);
+        setTimeout(() => {
+          onNavigatePage(pages[activeIndex + 1]);
+          setMobileSide("left");
+          setIsFlipping(false);
+        }, 260);
+      }
+    } else {
+      if (activeIndex < pages.length - 1) {
+        onNavigatePage(pages[activeIndex + 1]);
+      }
     }
   };
 
@@ -70,72 +97,234 @@ export function BookOpenPlanner({
     onUpdateBookPages(updatedPages);
   };
 
-  // Tabs on the right edge ("Estilo Escama")
-  const tabsList = [
-    { id: "cover", label: "Capa", short: "C" },
-    { id: "calendar", label: "Cal.", short: "Ca" },
-    { id: "goals", label: "Metas", short: "M" },
-    { id: "Jan", label: "Jan", short: "J" },
-    { id: "Fev", label: "Fev", short: "F" },
-    { id: "Mar", label: "Mar", short: "M" },
-    { id: "Abr", label: "Abr", short: "A" },
-    { id: "Mai", label: "Mai", short: "M" },
-    { id: "Jun", label: "Jun", short: "J" },
-    { id: "Jul", label: "Jul", short: "J" },
-    { id: "Ago", label: "Ago", short: "A" },
-    { id: "Set", label: "Set", short: "S" },
-    { id: "Out", label: "Out", short: "O" },
-    { id: "Nov", label: "Nov", short: "N" },
-    { id: "Dez", label: "Dez", short: "D" },
+  // Swipe gesture listeners for mobile viewpage slide focus
+  const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const [dragCurrentX, setDragCurrentX] = useState<number | null>(null);
+
+  const handleDragStart = (clientX: number) => {
+    setDragStartX(clientX);
+    setDragCurrentX(clientX);
+  };
+
+  const handleDragMove = (clientX: number) => {
+    if (dragStartX === null) return;
+    setDragCurrentX(clientX);
+  };
+
+  const handleDragEnd = () => {
+    if (dragStartX === null || dragCurrentX === null) return;
+    const diffX = dragCurrentX - dragStartX;
+    const threshold = 55;
+
+    if (Math.abs(diffX) > threshold) {
+      if (diffX < 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    }
+    setDragStartX(null);
+    setDragCurrentX(null);
+  };
+
+  const PASTEL_COLORS = [
+    "#E2DBD5", // Capa - Cinza Argila
+    "#EADBC8", // Cal - Rosa Antigo
+    "#F3ECE0", // Metas - Trigo Claro
+    "#CBD5D0", // Jan - Azul Névoa
+    "#D2DCD0", // Fev - Verde Sálvia
+    "#DACBD5", // Mar - Lavanda
   ];
 
-  // Resolve which tab is currently active
-  const getActiveTab = () => {
-    if (activePage.id === "cover") return "cover";
-    if (activePage.id === "calendar") return "calendar";
-    if (activePage.id === "goals") return "goals";
-    
-    // Check if it's a day page and resolve month
-    if (activePage.id.startsWith("d-2026-")) {
-      const parts = activePage.id.split("-");
-      const mNum = parts[2]; // "01" to "12"
-      const monthsMapping: Record<string, string> = {
-        "01": "Jan", "02": "Fev", "03": "Mar", "04": "Abr", "05": "Mai", "06": "Jun",
-        "07": "Jul", "08": "Ago", "09": "Set", "10": "Out", "11": "Nov", "12": "Dez"
-      };
-      return monthsMapping[mNum] || "cover";
+  // Dynamic tabs list extracted from the book pages
+  const dynamicTabs = (() => {
+    const list: Array<{
+      id: string;
+      label: string;
+      short: string;
+      color?: string;
+      type: "system" | "custom";
+      targetPageId: string;
+    }> = [];
+
+    const hasCover = pages.some(p => p.id === "cover");
+    if (hasCover) {
+      list.push({ id: "cover", label: "Capa", short: "Capa", type: "system", targetPageId: "cover" });
     }
-    return "cover";
+    const hasCalendar = pages.some(p => p.id === "calendar");
+    if (hasCalendar) {
+      list.push({ id: "calendar", label: "Calendário", short: "Cal", type: "system", targetPageId: "calendar" });
+    }
+    const hasGoals = pages.some(p => p.id === "goals");
+    if (hasGoals) {
+      list.push({ id: "goals", label: "Metas", short: "Metas", type: "system", targetPageId: "goals" });
+    }
+
+    const customSeparators: typeof list = [];
+    pages.forEach((page) => {
+      if (page.template === "separator") {
+        customSeparators.push({
+          id: page.id,
+          label: page.title,
+          short: page.title.substring(0, 5),
+          color: (page.pageData as any)?.separatorColor || "#CBD5D0",
+          type: "custom",
+          targetPageId: page.id
+        });
+      } else {
+        const sepBlock = page.pageData?.layoutBlocks?.find(b => b.type === "separator");
+        if (sepBlock) {
+          customSeparators.push({
+            id: `sep-${sepBlock.id}`,
+            label: sepBlock.title,
+            short: sepBlock.title.substring(0, 5),
+            color: sepBlock.variant || "#CBD5D0",
+            type: "custom",
+            targetPageId: page.id
+          });
+        }
+      }
+    });
+
+    if (customSeparators.length > 0) {
+      list.push(...customSeparators);
+    } else {
+      // Fallback: 4 spacious stationery categories instead of 12 crowded months
+      const hasMay13 = pages.some(p => p.id === "d-2026-05-13");
+      const targetDailyId = hasMay13 ? "d-2026-05-13" : (pages.find(p => p.id.startsWith("d-"))?.id || "cover");
+
+      list.push({
+        id: "diary-tab",
+        label: "Diário",
+        short: "Diário",
+        color: "#CBD5D0",
+        type: "system",
+        targetPageId: targetDailyId
+      });
+    }
+
+    return list;
+  })();
+
+  // Resolve active tab index dynamically
+  const getActiveTab = () => {
+    const tabsWithIndices = dynamicTabs.map(tab => {
+      let pageIdx = -1;
+      if (tab.type === "custom") {
+        pageIdx = pages.findIndex(p => p.id === tab.targetPageId);
+      } else {
+        if (tab.id === "cover") pageIdx = pages.findIndex(p => p.id === "cover");
+        else if (tab.id === "calendar") pageIdx = pages.findIndex(p => p.id === "calendar");
+        else if (tab.id === "goals") pageIdx = pages.findIndex(p => p.id === "goals");
+        else {
+          const monthsMapping: Record<string, string> = {
+            Jan: "01", Fev: "02", Mar: "03", Abr: "04", Mai: "05", Jun: "06",
+            Jul: "07", Ago: "08", Set: "09", Out: "10", Nov: "11", Dez: "12"
+          };
+          const mNum = monthsMapping[tab.id];
+          if (mNum) {
+            pageIdx = pages.findIndex(p => p.id.startsWith(`d-2026-${mNum}-`));
+          }
+        }
+      }
+      return { ...tab, pageIdx };
+    }).filter(t => t.pageIdx !== -1)
+      .sort((a, b) => a.pageIdx - b.pageIdx);
+
+    let activeTabId = dynamicTabs[0]?.id || "cover";
+    for (let i = 0; i < tabsWithIndices.length; i++) {
+      if (activeIndex >= tabsWithIndices[i].pageIdx) {
+        activeTabId = tabsWithIndices[i].id;
+      }
+    }
+    return activeTabId;
   };
 
   const currentActiveTab = getActiveTab();
 
-  const handleTabClick = (tabId: string) => {
-    if (tabId === "cover") {
-      const found = pages.find((p) => p.id === "cover");
-      if (found) onNavigatePage(found);
-    } else if (tabId === "calendar") {
-      const found = pages.find((p) => p.id === "calendar");
-      if (found) onNavigatePage(found);
-    } else if (tabId === "goals") {
-      const found = pages.find((p) => p.id === "goals");
+  const handleTabClick = (tab: typeof dynamicTabs[0]) => {
+    if (tab.type === "custom") {
+      const found = pages.find((p) => p.id === tab.targetPageId);
       if (found) onNavigatePage(found);
     } else {
-      // Month mapping
-      const monthsMapping: Record<string, string> = {
-        Jan: "01", Fev: "02", Mar: "03", Abr: "04", Mai: "05", Jun: "06",
-        Jul: "07", Ago: "08", Set: "09", Out: "10", Nov: "11", Dez: "12"
-      };
-      const mNum = monthsMapping[tabId];
-      if (mNum) {
-        const found = pages.find((p) => p.id.startsWith(`d-2026-${mNum}-`));
+      const tabId = tab.id;
+      if (tabId === "cover") {
+        const found = pages.find((p) => p.id === "cover");
         if (found) onNavigatePage(found);
+      } else if (tabId === "calendar") {
+        const found = pages.find((p) => p.id === "calendar");
+        if (found) onNavigatePage(found);
+      } else if (tabId === "goals") {
+        const found = pages.find((p) => p.id === "goals");
+        if (found) onNavigatePage(found);
+      } else {
+        const monthsMapping: Record<string, string> = {
+          Jan: "01", Fev: "02", Mar: "03", Abr: "04", Mai: "05", Jun: "06",
+          Jul: "07", Ago: "08", Set: "09", Out: "10", Nov: "11", Dez: "12"
+        };
+        const mNum = monthsMapping[tabId];
+        if (mNum) {
+          const found = pages.find((p) => p.id.startsWith(`d-2026-${mNum}-`));
+          if (found) onNavigatePage(found);
+        }
       }
     }
   };
 
+  const getPaperTextureClass = (page: PlannerPage) => {
+    if (page.template === "separator" || page.template === "cover") {
+      return "";
+    }
+    const pattern = page.pageData?.paperPattern || (page.template === "daily" ? "dot_grid" : "blank");
+    if (pattern === "lined") return "paper-texture-ruled";
+    if (pattern === "dot_grid") return "paper-texture-dotted";
+    if (pattern === "grid") return "paper-texture-grid";
+    return "";
+  };
+
+  const renderBindingRings = () => {
+    if (compact) {
+      return null;
+    }
+    const ringPositions = [12, 23, 34, 45, 56, 67, 78, 89];
+    return (
+      <div className="desktop-binding-spine">
+        {ringPositions.map((pos, idx) => (
+          <div key={idx} className="binding-element" style={{ top: `${pos}%` }}>
+            <div className="binding-hole-cutout binding-hole-cutout--left" />
+            <div className="binding-hole-cutout binding-hole-cutout--right" />
+            <div className="binding-ring-disc" />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // Render Left Page content
   const renderLeftPage = () => {
+    if (activePage.template === "separator") {
+      const titleText = activePage.pageData?.sectionTitle || activePage.title;
+      const bgColor = (activePage.pageData as any)?.separatorColor || "#CBD5D0";
+      return (
+        <div 
+          className="open-page__inner open-page__inner--separator"
+          style={{ 
+            backgroundColor: bgColor,
+            color: "#57534e",
+            boxShadow: "inset -10px 0 20px rgba(0,0,0,0.05)"
+          }}
+        >
+          <div className="separator-page-content left">
+            <div className="separator-card-embossed">
+              <h2>{titleText.toUpperCase()}</h2>
+              <div className="separator-card-line" />
+              <p>PAGELOOM INDEX DIVIDER</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (activePage.template === "cover") {
       return (
         <div className="open-page__inner open-page__inner--cover-left">
@@ -313,13 +502,36 @@ export function BookOpenPlanner({
     return (
       <div className="open-page__inner">
         <h3>{activePage.title}</h3>
-        <p>Página de Miolo Simples.</p>
+        <p>Página de Template Simples.</p>
       </div>
     );
   };
 
   // Render Right Page content
   const renderRightPage = () => {
+    if (activePage.template === "separator") {
+      const titleText = activePage.pageData?.sectionTitle || activePage.title;
+      const bgColor = (activePage.pageData as any)?.separatorColor || "#CBD5D0";
+      return (
+        <div 
+          className="open-page__inner open-page__inner--separator"
+          style={{ 
+            backgroundColor: bgColor,
+            color: "#57534e",
+            boxShadow: "inset 10px 0 20px rgba(0,0,0,0.05)"
+          }}
+        >
+          <div className="separator-page-content right">
+            <div className="separator-card-embossed">
+              <h2>{titleText.toUpperCase()}</h2>
+              <div className="separator-card-line" />
+              <small>SEÇÃO ATIVA · 2026 EDITION</small>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (activePage.template === "cover") {
       const handleUpdateColophonName = (val: string) => {
         updateActivePageData({ ownerName: val });
@@ -383,7 +595,7 @@ export function BookOpenPlanner({
 
           <div className="colophon-manufacturing-stamp">
             <p>Confeccionado reativamente por <strong>Pageloom Stationery Corp.</strong></p>
-            <span>A5 PREMIUM · PÓLEN SOFT MIOLO · 2026 EDITION</span>
+            <span>A5 PREMIUM · PÓLEN SOFT · 2026 EDITION</span>
           </div>
         </div>
       );
@@ -510,68 +722,136 @@ export function BookOpenPlanner({
 
     return (
       <div className="open-page__inner">
-        <p>Página de Miolo Simples oposta.</p>
+        <p>Página de Template Simples oposta.</p>
       </div>
     );
   };
 
+  const showTabs = activePage.id !== "cover" && activePage.template !== "cover";
+  const hasTabs = dynamicTabs.length > 0 && showTabs;
+
+  const hasPrevPage = activeIndex > 0 || (compact && mobileSide === "right");
+  const hasNextPage = activeIndex < pages.length - 1 || (compact && mobileSide === "left");
+
   return (
     <div className={`book-open-planner ${compact ? "book-open-planner--compact" : ""}`}>
-      {/* Outer book binder */}
-      <div className="planner-stage">
-        <div className={`open-book-frame ${isFlipping ? "is-flipping" : ""}`}>
-          {/* Central spine fold shadow */}
-          <div className="book-spine-fold" />
-
-          {/* Left Page Sheet */}
-          <div className="open-page open-page--left">
-            {renderLeftPage()}
-            {/* Page number */}
-            <span className="page-number-visual page-number-visual--left">
-              Pág. {activeIndex * 2 + 1}
-            </span>
-          </div>
-
-          {/* Right Page Sheet */}
-          <div className="open-page open-page--right">
-            {renderRightPage()}
-            {/* Page number */}
-            <span className="page-number-visual page-number-visual--right">
-              Pág. {activeIndex * 2 + 2}
-            </span>
-          </div>
-        </div>
-
-        {/* Physical Month Tabs overlapping on the right side ("Estilo Escama") */}
-        <div className="escama-tabs-container">
-          {tabsList.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className={`escama-tab-btn ${currentActiveTab === tab.id ? "is-active" : ""}`}
-              onClick={() => handleTabClick(tab.id)}
-              title={tab.label}
-            >
-              <span className="tab-label-text">{compact ? tab.short : tab.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* Mini floating page counter pill */}
+      <div className="planner-pill-counter">
+        Página {compact ? `${activeIndex * 2 + (mobileSide === "left" ? 1 : 2)}` : `${activeIndex * 2 + 1} - ${activeIndex * 2 + 2}`} de {pages.length * 2}
       </div>
 
-      {/* Footer Navigation bar */}
-      <footer className="planner-navigator-footer">
-        <button className="navigator-nav-btn" type="button" onClick={goPrev} disabled={activeIndex <= 0}>
-          <ChevronLeft size={16} />
-          Página Anterior
-        </button>
-        <span className="navigator-index-text">
-          Páginas <strong>{activeIndex * 2 + 1} - {activeIndex * 2 + 2}</strong> de {pages.length * 2}
-        </span>
-        <button className="navigator-nav-btn" type="button" onClick={goNext} disabled={activeIndex >= pages.length - 1}>
-          Próxima Página
-          <ChevronRight size={16} />
-        </button>
-      </footer>
+      {/* Outer book binder */}
+      <div className="planner-stage">
+        {/* Subtle dynamic paging arrows */}
+        {hasPrevPage && (
+          <button 
+            type="button" 
+            className="planner-flip-arrow planner-flip-arrow--left" 
+            onClick={goPrev}
+            aria-label="Página anterior"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        {hasNextPage && (
+          <button 
+            type="button" 
+            className="planner-flip-arrow planner-flip-arrow--right" 
+            onClick={goNext}
+            aria-label="Próxima página"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+
+        <div 
+          className={`planner-sheet-container ${hasTabs ? "has-tabs" : ""}`}
+          style={{
+            transform: compact 
+              ? (mobileSide === "left" 
+                ? (hasTabs ? "translateX(calc(25% + 6px))" : "translateX(25%)")
+                : (hasTabs ? "translateX(calc(-25% + 4px))" : "translateX(-25%)"))
+              : "none",
+            transition: compact ? "transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)" : "none"
+          }}
+        >
+          {/* Hardcover Backer */}
+          <div 
+            className="book-hardcover-backer"
+            style={{ backgroundColor: book.color || "#4B443B" }}
+          />
+
+          <div 
+            className={`open-book-frame ${isFlipping ? "is-flipping" : ""}`}
+            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+            onTouchEnd={handleDragEnd}
+            onMouseDown={(e) => handleDragStart(e.clientX)}
+            onMouseMove={(e) => handleDragMove(e.clientX)}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            style={{ cursor: compact ? "grab" : "default" }}
+          >
+            {/* Central spine fold seam - flat and extremely subtle line instead of a rounded cylinder */}
+            <div className="book-spine-seam" />
+
+            {/* Render the realistic disc/ring binding system */}
+            {renderBindingRings()}
+
+            {/* Book Pages Slider: shows both pages side-by-side inside the frame */}
+            <div 
+              className="open-book-pages-slider" 
+              style={{ 
+                display: "flex", 
+                width: "100%", 
+                height: "100%"
+              }}
+            >
+              {/* Left Page Sheet */}
+              <div className={`open-page open-page--left ${getPaperTextureClass(activePage)}`} style={{ flex: 1 }}>
+                {renderLeftPage()}
+                {/* Page number */}
+                <span className="page-number-visual page-number-visual--left">
+                  Pág. {activeIndex * 2 + 1}
+                </span>
+              </div>
+
+              {/* Right Page Sheet */}
+              <div className={`open-page open-page--right ${getPaperTextureClass(activePage)}`} style={{ flex: 1 }}>
+                {renderRightPage()}
+                {/* Page number */}
+                <span className="page-number-visual page-number-visual--right">
+                  Pág. {activeIndex * 2 + 2}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Physical Month Tabs overlapping on the right side ("Estilo Escama") - conditionally hidden on cover */}
+          {hasTabs && (
+            <div className="escama-tabs-container">
+              {dynamicTabs.map((tab, idx) => {
+                const tabColor = tab.color || PASTEL_COLORS[idx % PASTEL_COLORS.length];
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`escama-tab-btn ${currentActiveTab === tab.id ? "is-active" : ""}`}
+                    onClick={() => handleTabClick(tab)}
+                    title={tab.label}
+                    style={{
+                      backgroundColor: tabColor,
+                      zIndex: currentActiveTab === tab.id ? 12 : 5 + idx,
+                    }}
+                  >
+                    <span className="tab-label-text">{compact ? tab.short : tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -581,26 +861,112 @@ function CustomLayoutSpreadPage({ page, side }: { page: PlannerPage; side: "left
   const paperTone = page.pageData?.paperTone ?? "offset";
   const paperPattern = page.pageData?.paperPattern ?? "blank";
 
+  const TONE_COLORS: Record<string, string> = {
+    offset: "#fffdf8",
+    pollen: "#fbf3df",
+    recycled: "#ded0b2",
+    rice: "#ffffff",
+    black: "#1f1f1d"
+  };
+  const paperBgColor = TONE_COLORS[paperTone] || "#fffdf8";
+
+  // In print layouts: left page is even, right page is odd.
+  // Standard A5 safety margins: inner spine is 20mm, outer side is 10mm
+  const isOdd = side === "right";
+  const leftMargin = isOdd ? 20 : 10;
+  const rightMargin = isOdd ? 10 : 20;
+
   return (
-    <div className={`open-page__inner open-page__inner--custom custom-layout-sheet custom-layout-sheet--${paperTone} custom-layout-sheet--${paperPattern} custom-layout-sheet--${side}`}>
-      <div className="custom-layout-sheet__binding-zone" aria-hidden="true" />
-      <div className="custom-layout-sheet__safe-zone" aria-hidden="true" />
-      <div className="custom-layout-sheet__blocks">
-        {blocks.map((layoutBlock) => (
-          <div
-            key={layoutBlock.id}
-            className={`custom-layout-block custom-layout-block--${layoutBlock.type}`}
-            style={{
-              left: `${(layoutBlock.xMm / 148) * 100}%`,
-              top: `${(layoutBlock.yMm / 210) * 100}%`,
-              width: `${(layoutBlock.widthMm / 148) * 100}%`,
-              height: `${(layoutBlock.heightMm / 210) * 100}%`,
-            }}
-          >
-            <BlockArtwork block={layoutBlock} />
-          </div>
-        ))}
-      </div>
+    <div className={`open-page__inner open-page__inner--custom custom-layout-sheet custom-layout-sheet--${paperTone} custom-layout-sheet--${side}`} style={{ width: "100%", height: "100%", position: "relative" }}>
+      <svg 
+        viewBox="0 0 148 210" 
+        width="100%" 
+        height="100%" 
+        style={{ display: "block", width: "100%", height: "100%", overflow: "hidden" }}
+      >
+        <defs>
+          {/* Lined pattern: strict physical 7mm pauta spacing, starting 10mm from top */}
+          <pattern id={`ruled-${page.id}`} width="148" height="7" patternUnits="userSpaceOnUse" patternTransform="translate(0, 10)">
+            <line x1="0" y1="7" x2="148" y2="7" stroke={paperTone === "black" ? "rgba(246, 241, 231, 0.15)" : "rgba(123, 172, 194, 0.22)"} strokeWidth="0.25" />
+          </pattern>
+          {/* Dotted pattern: strict physical 5mm grid spacing */}
+          <pattern id={`dotted-${page.id}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="translate(2.5, 2.5)">
+            <circle cx="2.5" cy="2.5" r="0.45" fill={paperTone === "black" ? "rgba(246, 241, 231, 0.25)" : "rgba(87, 83, 78, 0.22)"} />
+          </pattern>
+          {/* Grid pattern: strict physical 5mm x 5mm grid */}
+          <pattern id={`grid-${page.id}`} width="5" height="5" patternUnits="userSpaceOnUse">
+            <rect width="5" height="5" fill="none" stroke={paperTone === "black" ? "rgba(246, 241, 231, 0.1)" : "rgba(87, 83, 78, 0.12)"} strokeWidth="0.25" />
+          </pattern>
+        </defs>
+
+        {/* Paper solid background tone */}
+        <rect width="148" height="210" fill={paperBgColor} />
+
+        {/* Paper texture overlay based on selected pattern */}
+        {paperPattern === "lined" && (
+          <rect width="148" height="210" fill={`url(#ruled-${page.id})`} />
+        )}
+        {paperPattern === "dot_grid" && (
+          <rect width="148" height="210" fill={`url(#dotted-${page.id})`} />
+        )}
+        {paperPattern === "grid" && (
+          <rect width="148" height="210" fill={`url(#grid-${page.id})`} />
+        )}
+
+        {/* Binding zone shadow mask */}
+        <rect 
+          x={isOdd ? 0 : 128} 
+          y="0" 
+          width="20" 
+          height="210" 
+          fill={paperTone === "black" ? "rgba(255,255,255,0.02)" : "rgba(45, 36, 32, 0.035)"} 
+          pointerEvents="none" 
+        />
+
+        {/* Safe area boundary guideline */}
+        <rect 
+          x={leftMargin} 
+          y="10" 
+          width={148 - leftMargin - rightMargin} 
+          height="190" 
+          fill="none" 
+          stroke={paperTone === "black" ? "rgba(246, 241, 231, 0.08)" : "rgba(123, 172, 194, 0.18)"} 
+          strokeWidth="0.3" 
+          strokeDasharray="1 1" 
+          pointerEvents="none" 
+        />
+
+        {/* Render Blocks */}
+        {blocks.map((layoutBlock) => {
+          return (
+            <g key={layoutBlock.id} transform={`translate(${layoutBlock.xMm}, ${layoutBlock.yMm})`}>
+              {/* Opaque Block Masking: solid rect behind each block to cover page background texture */}
+              <rect 
+                width={layoutBlock.widthMm} 
+                height={layoutBlock.heightMm} 
+                fill={paperBgColor} 
+                rx="1.5" 
+                style={{ filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.02))" }}
+              />
+              
+              {/* HTML Block Content rendered inside SVG coordinates using foreignObject */}
+              <foreignObject 
+                x="0" 
+                y="0" 
+                width={layoutBlock.widthMm} 
+                height={layoutBlock.heightMm}
+              >
+                <div 
+                  className={`custom-layout-block custom-layout-block--${layoutBlock.type}`}
+                  style={{ width: "100%", height: "100%", margin: 0, padding: 0 }}
+                >
+                  <BlockArtwork block={layoutBlock} />
+                </div>
+              </foreignObject>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }

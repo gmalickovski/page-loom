@@ -1,6 +1,7 @@
 import {
   AlignLeft,
   BookOpen,
+  Bookmark,
   CalendarDays,
   CheckSquare,
   Clock3,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useMemo, useRef, useState } from "react";
+import { getGridSnapSteps, snapToNearest } from "../../lib/grid-snap";
 import type {
   PaperPattern,
   PaperTone,
@@ -44,7 +46,7 @@ const CUT_MARGIN_MM = 10;
 const BLEED_MM = 3;
 const SNAP_MM = 5;
 
-const PAPER_TONES: Record<PaperTone, { label: string; color: string; ink: string }> = {
+export const PAPER_TONES: Record<PaperTone, { label: string; color: string; ink: string }> = {
   offset: { label: "Offset branco", color: "#fffdf8", ink: "#2d2420" },
   pollen: { label: "Polen suave", color: "#fbf3df", ink: "#2d2420" },
   recycled: { label: "Reciclado", color: "#ded0b2", ink: "#2d2420" },
@@ -71,20 +73,21 @@ interface BlockPreset {
 }
 
 const BLOCK_PRESETS: BlockPreset[] = [
-  { id: "date-header", type: "date_header", title: "Datador", variant: "Cabecalho", category: "Tempo", widthMm: 108, heightMm: 18, icon: CalendarDays },
-  { id: "schedule-vertical", type: "schedule", title: "Cronograma", variant: "Vertical 06-22h", category: "Tempo", widthMm: 48, heightMm: 128, icon: Clock3 },
-  { id: "calendar-month", type: "calendar", title: "Calendário", variant: "Mensal 1/2 Página", category: "Tempo", widthMm: 108, heightMm: 92, icon: CalendarDays },
+  { id: "date-header", type: "date_header", title: "Datador", variant: "Cabecalho", category: "Tempo", widthMm: 105, heightMm: 20, icon: CalendarDays },
+  { id: "schedule-vertical", type: "schedule", title: "Cronograma", variant: "Vertical 06-22h", category: "Tempo", widthMm: 50, heightMm: 130, icon: Clock3 },
+  { id: "calendar-month", type: "calendar", title: "Calendário", variant: "Mensal 1/2 Página", category: "Tempo", widthMm: 105, heightMm: 90, icon: CalendarDays },
   { id: "calendar-mini", type: "calendar", title: "Mini calendario", variant: "Referencia 4cm", category: "Tempo", widthMm: 40, heightMm: 40, icon: CalendarDays },
-  { id: "habit-linear", type: "habit_tracker", title: "Habit tracker", variant: "31 marcadores", category: "Bem-estar", widthMm: 108, heightMm: 24, icon: ListChecks },
-  { id: "mood-compact", type: "mood_tracker", title: "Mood tracker", variant: "Humor diario", category: "Bem-estar", widthMm: 52, heightMm: 34, icon: Smile },
-  { id: "water-log", type: "water_tracker", title: "Hidratacao", variant: "8 copos", category: "Bem-estar", widthMm: 52, heightMm: 28, icon: Droplets },
-  { id: "meal-plan", type: "meal_plan", title: "Refeicoes", variant: "Cafe/almoco/jantar", category: "Bem-estar", widthMm: 58, heightMm: 64, icon: Utensils },
-  { id: "checklist", type: "checklist", title: "Checklist", variant: "Prioridades", category: "Organizacao", widthMm: 58, heightMm: 82, icon: CheckSquare },
-  { id: "finance", type: "finance_table", title: "Financeiro", variant: "Entrada/saida", category: "Organizacao", widthMm: 108, heightMm: 54, icon: WalletCards },
-  { id: "eisenhower", type: "eisenhower", title: "Eisenhower", variant: "4 quadrantes", category: "Organizacao", widthMm: 108, heightMm: 78, icon: Target },
-  { id: "notes", type: "notes", title: "Notas", variant: "Linhas livres", category: "Criativo", widthMm: 108, heightMm: 72, icon: AlignLeft },
-  { id: "photo", type: "photo", title: "Foto", variant: "Moldura polaroid", category: "Criativo", widthMm: 44, heightMm: 56, icon: Image },
-  { id: "quote", type: "quote", title: "Citacao", variant: "Destaque", category: "Criativo", widthMm: 62, heightMm: 34, icon: Quote },
+  { id: "habit-linear", type: "habit_tracker", title: "Habit tracker", variant: "31 marcadores", category: "Bem-estar", widthMm: 105, heightMm: 25, icon: ListChecks },
+  { id: "mood-compact", type: "mood_tracker", title: "Mood tracker", variant: "Humor diario", category: "Bem-estar", widthMm: 50, heightMm: 35, icon: Smile },
+  { id: "water-log", type: "water_tracker", title: "Hidratacao", variant: "8 copos", category: "Bem-estar", widthMm: 50, heightMm: 30, icon: Droplets },
+  { id: "meal-plan", type: "meal_plan", title: "Refeicoes", variant: "Cafe/almoco/jantar", category: "Bem-estar", widthMm: 60, heightMm: 65, icon: Utensils },
+  { id: "checklist", type: "checklist", title: "Checklist", variant: "Prioridades", category: "Organizacao", widthMm: 60, heightMm: 80, icon: CheckSquare },
+  { id: "finance", type: "finance_table", title: "Financeiro", variant: "Entrada/saida", category: "Organizacao", widthMm: 105, heightMm: 55, icon: WalletCards },
+  { id: "eisenhower", type: "eisenhower", title: "Eisenhower", variant: "4 quadrantes", category: "Organizacao", widthMm: 105, heightMm: 80, icon: Target },
+  { id: "separator-tab", type: "separator", title: "Aba Separadora", variant: "#CBD5D0", category: "Organizacao", widthMm: 50, heightMm: 25, icon: Bookmark },
+  { id: "notes", type: "notes", title: "Notas", variant: "Linhas livres", category: "Criativo", widthMm: 105, heightMm: 70, icon: AlignLeft },
+  { id: "photo", type: "photo", title: "Foto", variant: "Moldura polaroid", category: "Criativo", widthMm: 45, heightMm: 55, icon: Image },
+  { id: "quote", type: "quote", title: "Citacao", variant: "Destaque", category: "Criativo", widthMm: 60, heightMm: 35, icon: Quote },
 ];
 
 const CATEGORY_ORDER: BlockPreset["category"][] = ["Tempo", "Bem-estar", "Organizacao", "Criativo"];
@@ -100,11 +103,15 @@ interface PageInteriorDesignerProps {
 export function createDefaultInteriorPlan(
   capacity: PlannerBook["pages"] = 160,
   templateType: PlannerBook["templateType"] = "agenda_2026",
+  holePunching: PlannerInteriorPlan["holePunching"] = "discs"
 ): PlannerInteriorPlan {
+  const bindingMarginMm = holePunching === "none" ? 12 : holePunching === "binder" ? 25 : 20;
+
   const plan: PlannerInteriorPlan = {
     format: "A5",
     capacity,
-    bindingMarginMm: BINDING_MARGIN_MM,
+    holePunching,
+    bindingMarginMm,
     outerMarginMm: OUTER_MARGIN_MM,
     topMarginMm: CUT_MARGIN_MM,
     bottomMarginMm: CUT_MARGIN_MM,
@@ -115,10 +122,7 @@ export function createDefaultInteriorPlan(
 
   if (templateType === "custom_planner") {
     plan.sections = [
-      section("sec-custom", "Template Livre", "Miolo Personalizado", capacity, "dot_grid", "offset", [
-        block("b-custom-date", "date_header", "Datador", "Cabecalho", 20, 12, 108, 18),
-        block("b-custom-notes", "notes", "Notas", "Linhas livres", 20, 42, 108, 112),
-      ]),
+      section("sec-custom", "Template Livre", "Template Personalizado", 40, "blank", "offset", []),
     ];
     return normalizeInteriorPlan(plan, capacity);
   }
@@ -126,15 +130,15 @@ export function createDefaultInteriorPlan(
   if (templateType === "notes_notebook") {
     plan.sections = [
       section("sec-index", "Abertura", "Indice e metas", 8, "dot_grid", "pollen", [
-        block("b-date-index", "date_header", "Datador", "Cabecalho", 20, 12, 108, 18),
-        block("b-notes-index", "notes", "Mapa do book", "Linhas livres", 20, 40, 108, 88),
+        block("b-date-index", "date_header", "Datador", "Cabecalho", 20, 10, 105, 20),
+        block("b-notes-index", "notes", "Mapa do book", "Linhas livres", 20, 35, 105, 90),
       ]),
       section("sec-notes", "Notas pautadas", "Folha de escrita longa", Math.max(24, capacity - 24), "lined", "offset", [
-        block("b-notes-main", "notes", "Notas", "Pagina cheia", 20, 18, 108, 156),
+        block("b-notes-main", "notes", "Notas", "Pagina cheia", 20, 15, 105, 155),
       ]),
       section("sec-free", "Pontilhadas livres", "Bullet journal", 16, "dot_grid", "recycled", [
-        block("b-mini-free", "calendar", "Mini calendario", "Referencia 4cm", 20, 16, 40, 40),
-        block("b-free-notes", "notes", "Notas", "Area livre", 20, 66, 108, 92),
+        block("b-mini-free", "calendar", "Mini calendario", "Referencia 4cm", 20, 15, 40, 40),
+        block("b-free-notes", "notes", "Notas", "Area livre", 20, 65, 105, 90),
       ]),
     ];
     return normalizeInteriorPlan(plan, capacity);
@@ -142,25 +146,25 @@ export function createDefaultInteriorPlan(
 
   plan.sections = [
     section("sec-opening", "Abertura e Metas", "Metas do Ano", 8, "dot_grid", "pollen", [
-      block("b-open-date", "date_header", "Datador", "Cabecalho", 20, 12, 108, 18),
-      block("b-open-calendar", "calendar", "Calendário", "Mensal 1/2 Página", 20, 40, 108, 92),
-      block("b-open-quote", "quote", "Citacao", "Destaque", 43, 144, 62, 34),
+      block("b-open-date", "date_header", "Datador", "Cabecalho", 20, 10, 105, 20),
+      block("b-open-calendar", "calendar", "Calendário", "Mensal 1/2 Página", 20, 35, 105, 90),
+      block("b-open-quote", "quote", "Citacao", "Destaque", 40, 145, 60, 35),
     ]),
     section("sec-daily", "Planejamento Diário", "Time Blocking + Tarefas", Math.max(24, capacity - 48), "lined", "offset", [
-      block("b-daily-date", "date_header", "Datador", "Cabecalho", 20, 12, 108, 18),
-      block("b-daily-schedule", "schedule", "Cronograma", "Vertical 06-22h", 20, 38, 48, 128),
-      block("b-daily-check", "checklist", "Checklist", "Prioridades", 74, 38, 54, 70),
-      block("b-daily-water", "water_tracker", "Hidratacao", "8 copos", 74, 116, 52, 28),
-      block("b-daily-mood", "mood_tracker", "Mood tracker", "Humor diario", 74, 150, 52, 28),
+      block("b-daily-date", "date_header", "Datador", "Cabecalho", 20, 10, 105, 20),
+      block("b-daily-schedule", "schedule", "Cronograma", "Vertical 06-22h", 20, 35, 50, 130),
+      block("b-daily-check", "checklist", "Checklist", "Prioridades", 75, 35, 50, 70),
+      block("b-daily-water", "water_tracker", "Hidratacao", "8 copos", 75, 110, 50, 30),
+      block("b-daily-mood", "mood_tracker", "Mood tracker", "Humor diario", 75, 145, 50, 30),
     ]),
     section("sec-review", "Revisão Mensal", "Hábitos e Finanças", 24, "grid", "pollen", [
-      block("b-review-habit", "habit_tracker", "Habit tracker", "31 marcadores", 20, 18, 108, 24),
-      block("b-review-finance", "finance_table", "Financeiro", "Entrada/saida", 20, 52, 108, 54),
-      block("b-review-eisenhower", "eisenhower", "Eisenhower", "4 quadrantes", 20, 118, 108, 60),
+      block("b-review-habit", "habit_tracker", "Habit tracker", "31 marcadores", 20, 15, 105, 25),
+      block("b-review-finance", "finance_table", "Financeiro", "Entrada/saida", 20, 45, 105, 55),
+      block("b-review-eisenhower", "eisenhower", "Eisenhower", "4 quadrantes", 20, 105, 105, 60),
     ]),
     section("sec-notes", "Notas Livres", "Pontilhado Premium", 16, "dot_grid", "recycled", [
-      block("b-notes-mini", "calendar", "Mini calendario", "Referencia 4cm", 20, 18, 40, 40),
-      block("b-notes-main", "notes", "Notas", "Linhas livres", 20, 68, 108, 92),
+      block("b-notes-mini", "calendar", "Mini calendario", "Referencia 4cm", 20, 15, 40, 40),
+      block("b-notes-main", "notes", "Notas", "Linhas livres", 20, 65, 105, 90),
     ]),
   ];
 
@@ -168,10 +172,17 @@ export function createDefaultInteriorPlan(
 }
 
 export function normalizeInteriorPlan(plan: PlannerInteriorPlan, capacity: PlannerBook["pages"]): PlannerInteriorPlan {
+  const bindingMarginMm = plan.holePunching === "none" ? 12 : plan.holePunching === "binder" ? 25 : 20;
+
   const sections = plan.sections.map((sectionItem) => ({
     ...sectionItem,
     pageCount: Math.max(1, Math.round(sectionItem.pageCount)),
-    blocks: sectionItem.blocks.map((layoutBlock) => clampBlock(layoutBlock, "odd")),
+    blocks: sectionItem.blocks.map((layoutBlock) => {
+      const [stepX, stepY] = getGridSnapSteps(sectionItem.paperPattern);
+      const margins = getDynamicMargins("odd", bindingMarginMm, sectionItem.paperPattern);
+      const snapped = snapBlockToGrid(layoutBlock, margins.leftMargin, margins.topMargin, stepX, stepY);
+      return clampBlock(snapped, "odd", bindingMarginMm, sectionItem.paperPattern);
+    }),
   }));
 
   let total = sections.reduce((sum, sectionItem) => sum + sectionItem.pageCount, 0);
@@ -190,7 +201,8 @@ export function normalizeInteriorPlan(plan: PlannerInteriorPlan, capacity: Plann
     ...plan,
     capacity,
     format: "A5",
-    bindingMarginMm: BINDING_MARGIN_MM,
+    holePunching: plan.holePunching || "discs",
+    bindingMarginMm,
     outerMarginMm: OUTER_MARGIN_MM,
     topMarginMm: CUT_MARGIN_MM,
     bottomMarginMm: CUT_MARGIN_MM,
@@ -247,11 +259,11 @@ export function createPagesFromInteriorPlan(plan: PlannerInteriorPlan, title: st
   if (plannerPages.length === 1) {
     plannerPages.push({
       id: "custom-empty",
-      title: title || "Miolo Personalizado",
+      title: title || "Template Personalizado",
       date: "A5",
       template: "custom",
       pageData: {
-        sectionTitle: "Miolo Personalizado",
+        sectionTitle: "Template Personalizado",
         paperPattern: "dot_grid",
         paperTone: "offset",
         layoutBlocks: [block("b-empty-notes", "notes", "Notas", "Linhas livres", 20, 20, 108, 120)],
@@ -303,6 +315,10 @@ export function PageInteriorDesigner({
   const handleCapacityClick = (nextCapacity: PlannerBook["pages"]) => {
     onCapacityChange(nextCapacity);
     onPlanChange(normalizeInteriorPlan({ ...plan, capacity: nextCapacity }, nextCapacity));
+  };
+
+  const handleHolePunchingChange = (holePunching: PlannerInteriorPlan["holePunching"]) => {
+    onPlanChange(normalizeInteriorPlan({ ...plan, holePunching }, capacity));
   };
 
   const handleSectionDrop = (targetId: string) => {
@@ -360,6 +376,8 @@ export function PageInteriorDesigner({
 
   const addBlockFromPreset = (preset: BlockPreset) => {
     if (!selectedSection) return;
+    const [stepX, stepY] = getGridSnapSteps(selectedSection.paperPattern);
+    const margins = getDynamicMargins(previewSide, plan.bindingMarginMm, selectedSection.paperPattern);
 
     const index = selectedSection.blocks.length;
     const rawBlock = block(
@@ -367,12 +385,13 @@ export function PageInteriorDesigner({
       preset.type,
       preset.title,
       preset.variant,
-      20 + (index % 2) * 54,
-      18 + Math.floor(index / 2) * 34,
+      margins.leftMargin + (index % 2) * stepX * 10,
+      margins.topMargin + Math.floor(index / 2) * stepY * 5,
       preset.widthMm,
       preset.heightMm,
     );
-    const nextBlock = clampBlock(rawBlock, previewSide);
+    const snappedBlock = snapBlockToGrid(rawBlock, margins.leftMargin, margins.topMargin, stepX, stepY);
+    const nextBlock = clampBlock(snappedBlock, previewSide, plan.bindingMarginMm, selectedSection.paperPattern);
 
     updateSection(selectedSection.id, (sectionItem) => ({
       ...sectionItem,
@@ -393,14 +412,18 @@ export function PageInteriorDesigner({
 
   const moveBlock = (blockId: string, xMm: number, yMm: number) => {
     if (!selectedSection) return;
+    const [stepX, stepY] = getGridSnapSteps(selectedSection.paperPattern);
+    const margins = getDynamicMargins(previewSide, plan.bindingMarginMm, selectedSection.paperPattern);
 
     updateSection(selectedSection.id, (sectionItem) => ({
       ...sectionItem,
-      blocks: sectionItem.blocks.map((layoutBlock) =>
-        layoutBlock.id === blockId
-          ? clampBlock({ ...layoutBlock, xMm: snap(xMm), yMm: snap(yMm) }, previewSide)
-          : layoutBlock,
-      ),
+      blocks: sectionItem.blocks.map((layoutBlock) => {
+        if (layoutBlock.id !== blockId) return layoutBlock;
+        
+        const rawBlock = { ...layoutBlock, xMm, yMm };
+        const snappedBlock = snapBlockToGrid(rawBlock, margins.leftMargin, margins.topMargin, stepX, stepY);
+        return clampBlock(snappedBlock, previewSide, plan.bindingMarginMm, selectedSection.paperPattern);
+      }),
     }));
   };
 
@@ -444,7 +467,6 @@ export function PageInteriorDesigner({
     );
   }
 
-  const safeAreaStyle = getSafeAreaStyle(previewSide);
   const paperTone = PAPER_TONES[selectedSection.paperTone];
 
   return (
@@ -476,6 +498,38 @@ export function PageInteriorDesigner({
                 {amount}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="interior-capacity">
+          <div className="interior-capacity__numbers">
+            <strong>Furação</strong>
+          </div>
+          <div className="interior-capacity__segments" style={{ marginTop: "8px" }}>
+            <button
+              type="button"
+              className={plan.holePunching === "none" ? "is-active" : ""}
+              onClick={() => handleHolePunchingChange("none")}
+              title="Livre (Sem Furos)"
+            >
+              Nenhum
+            </button>
+            <button
+              type="button"
+              className={plan.holePunching === "discs" ? "is-active" : ""}
+              onClick={() => handleHolePunchingChange("discs")}
+              title="Caderno Inteligente"
+            >
+              Discos
+            </button>
+            <button
+              type="button"
+              className={plan.holePunching === "binder" ? "is-active" : ""}
+              onClick={() => handleHolePunchingChange("binder")}
+              title="Fichário Clássico"
+            >
+              Fichário
+            </button>
           </div>
         </div>
 
@@ -523,15 +577,19 @@ export function PageInteriorDesigner({
         <div className="interior-page-stage">
           <div
             ref={pageRef}
-            className={`interior-page-preview interior-page-preview--${selectedSection.paperTone} interior-page-preview--${selectedSection.paperPattern} interior-page-preview--${previewSide}`}
+            className={`interior-page-preview interior-page-preview--${selectedSection.paperTone} interior-page-preview--${selectedSection.paperPattern} interior-page-preview--${previewSide} interior-page-preview--punch-${plan.holePunching}`}
             style={{
               "--paper-color": paperTone.color,
               "--paper-ink": paperTone.ink,
+              "--binding-margin-perc": `${(plan.bindingMarginMm / A5_WIDTH_MM) * 100}%`
             } as CSSProperties}
           >
             <div className="interior-page-preview__bleed" aria-hidden="true" />
-            <div className="interior-page-preview__binding-zone" aria-hidden="true" />
-            <div className="interior-page-preview__safe-zone" style={safeAreaStyle} aria-hidden="true" />
+            <div className="interior-page-preview__binding-zone" aria-hidden="true">
+              {plan.holePunching === "discs" && Array.from({ length: 8 }).map((_, i) => <i key={i} className="hole-disc" />)}
+              {plan.holePunching === "binder" && Array.from({ length: 6 }).map((_, i) => <i key={i} className="hole-binder" />)}
+            </div>
+            <div className="interior-page-preview__safe-zone" style={getSafeAreaStyle(previewSide, plan.bindingMarginMm, selectedSection.paperPattern)} aria-hidden="true" />
 
             {selectedSection.blocks.map((layoutBlock) => (
               <button
@@ -644,12 +702,131 @@ export function PageInteriorDesigner({
           {selectedBlock ? (
             <>
               <span className="interior-tools-label"><CheckSquare size={13} /> Bloco selecionado</span>
-              <div className="interior-selected-block">
-                <strong>{selectedBlock.title}</strong>
-                <small>{selectedBlock.variant} · {selectedBlock.widthMm} x {selectedBlock.heightMm} mm</small>
-                <button type="button" onClick={() => deleteBlock(selectedBlock.id)}>
+              <div className="interior-selected-block" style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px", border: "1px solid var(--color-border)", borderRadius: "8px", backgroundColor: "rgba(0,0,0,0.01)" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Título do Bloco</span>
+                  <input
+                    type="text"
+                    value={selectedBlock.title}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--color-border)",
+                      fontSize: "13px",
+                      width: "100%",
+                      backgroundColor: "var(--color-bg)"
+                    }}
+                    onChange={(e) => {
+                      updateSection(selectedSection.id, (sec) => ({
+                        ...sec,
+                        blocks: sec.blocks.map((b) => b.id === selectedBlock.id ? { ...b, title: e.target.value } : b)
+                      }));
+                    }}
+                  />
+                </label>
+
+                {selectedBlock.type === "separator" ? (
+                  <label style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Cor da Aba Pastel (Hex)</span>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0" }}>
+                      {[
+                        "#E2DBD5", // Cinza Argila
+                        "#EADBC8", // Rosa Antigo
+                        "#F3ECE0", // Trigo Claro
+                        "#CBD5D0", // Azul Névoa
+                        "#D2DCD0", // Verde Sálvia
+                        "#DACBD5", // Lavanda
+                      ].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            backgroundColor: c,
+                            border: selectedBlock.variant === c ? "2px solid #57534e" : "1px solid rgba(0,0,0,0.15)",
+                            cursor: "pointer",
+                            padding: 0
+                          }}
+                          onClick={() => {
+                            updateSection(selectedSection.id, (sec) => ({
+                              ...sec,
+                              blocks: sec.blocks.map((b) => b.id === selectedBlock.id ? { ...b, variant: c } : b)
+                            }));
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={selectedBlock.variant}
+                      placeholder="#hex-color"
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border)",
+                        fontSize: "13px",
+                        width: "100%",
+                        backgroundColor: "var(--color-bg)"
+                      }}
+                      onChange={(e) => {
+                        updateSection(selectedSection.id, (sec) => ({
+                          ...sec,
+                          blocks: sec.blocks.map((b) => b.id === selectedBlock.id ? { ...b, variant: e.target.value } : b)
+                        }));
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Variante / Estilo</span>
+                    <input
+                      type="text"
+                      value={selectedBlock.variant}
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid var(--color-border)",
+                        fontSize: "13px",
+                        width: "100%",
+                        backgroundColor: "var(--color-bg)"
+                      }}
+                      onChange={(e) => {
+                        updateSection(selectedSection.id, (sec) => ({
+                          ...sec,
+                          blocks: sec.blocks.map((b) => b.id === selectedBlock.id ? { ...b, variant: e.target.value } : b)
+                        }));
+                      }}
+                    />
+                  </label>
+                )}
+
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "4px" }}>
+                  Dimensões: {selectedBlock.widthMm} x {selectedBlock.heightMm} mm
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={() => deleteBlock(selectedBlock.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    width: "100%",
+                    padding: "8px",
+                    backgroundColor: "rgba(220, 38, 38, 0.08)",
+                    color: "#dc2626",
+                    border: "1px solid rgba(220, 38, 38, 0.2)",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    marginTop: "8px"
+                  }}
+                >
                   <Trash2 size={14} />
-                  Remover
+                  Remover Bloco
                 </button>
               </div>
             </>
@@ -799,6 +976,31 @@ export function BlockArtwork({ block }: { block: PlannerLayoutBlock }) {
     );
   }
 
+  if (block.type === "separator") {
+    return (
+      <span 
+        className="block-art block-art--separator"
+        style={{
+          borderLeft: `4px solid ${block.variant || "#CBD5D0"}`,
+          padding: "4px 8px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          height: "100%",
+          backgroundColor: "rgba(0,0,0,0.03)",
+          borderRadius: "4px"
+        }}
+      >
+        <span style={{ fontSize: "10px", fontWeight: "bold", color: "#57534e" }}>
+          🔖 {block.title || "Separador"}
+        </span>
+        <span style={{ fontSize: "8px", color: "#8a857f", marginTop: "2px" }}>
+          Aba Física {block.variant || "Pastel"}
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span className="block-art block-art--notes">
       <b>{block.title}</b>
@@ -845,32 +1047,99 @@ function snap(value: number) {
   return Math.round(value / SNAP_MM) * SNAP_MM;
 }
 
-function clampBlock(layoutBlock: PlannerLayoutBlock, side: "odd" | "even") {
-  const leftMargin = side === "odd" ? BINDING_MARGIN_MM : OUTER_MARGIN_MM;
-  const rightMargin = side === "odd" ? OUTER_MARGIN_MM : BINDING_MARGIN_MM;
-  const minX = leftMargin;
-  const maxX = A5_WIDTH_MM - rightMargin - layoutBlock.widthMm;
-  const minY = CUT_MARGIN_MM;
-  const maxY = A5_HEIGHT_MM - CUT_MARGIN_MM - layoutBlock.heightMm;
+function getDynamicMargins(side: "odd" | "even", bindingMarginMm: number, pattern: string = "blank") {
+  const [spacingX, spacingY] = getGridSnapSteps(pattern as any);
 
+  let leftMargin = side === "odd" ? bindingMarginMm : OUTER_MARGIN_MM;
+  let rightMargin = side === "odd" ? OUTER_MARGIN_MM : bindingMarginMm;
+  if (spacingX > 0) {
+    const availableWidth = A5_WIDTH_MM - leftMargin - rightMargin;
+    const exactWidth = Math.round(availableWidth / spacingX) * spacingX;
+    const difference = availableWidth - exactWidth;
+    
+    if (side === "odd") rightMargin += difference;
+    else leftMargin += difference;
+  }
+
+  let topMargin = CUT_MARGIN_MM;
+  let bottomMargin = CUT_MARGIN_MM;
+  if (spacingY > 0) {
+    const availableHeight = A5_HEIGHT_MM - topMargin - bottomMargin;
+    const exactHeight = Math.round(availableHeight / spacingY) * spacingY;
+    const difference = availableHeight - exactHeight;
+    topMargin += difference;
+  }
+
+  return { leftMargin, rightMargin, topMargin, bottomMargin };
+}
+
+function snapBlockToGrid(
+  block: PlannerLayoutBlock,
+  leftMargin: number,
+  topMargin: number,
+  stepX: number,
+  stepY: number
+): PlannerLayoutBlock {
+  if (block.type === "page_background") return block;
+  
+  const widthMm = Math.max(stepX, snapToNearest(block.widthMm, stepX));
+  const heightMm = Math.max(stepY, snapToNearest(block.heightMm, stepY));
+  
+  const relX = block.xMm - leftMargin;
+  const relY = block.yMm - topMargin;
+  const snappedRelX = snapToNearest(relX, stepX);
+  const snappedRelY = snapToNearest(relY, stepY);
+  
   return {
-    ...layoutBlock,
-    widthMm: Math.min(layoutBlock.widthMm, A5_WIDTH_MM - leftMargin - rightMargin),
-    heightMm: Math.min(layoutBlock.heightMm, A5_HEIGHT_MM - CUT_MARGIN_MM * 2),
-    xMm: Math.max(minX, Math.min(Math.max(minX, maxX), layoutBlock.xMm)),
-    yMm: Math.max(minY, Math.min(Math.max(minY, maxY), layoutBlock.yMm)),
+    ...block,
+    widthMm,
+    heightMm,
+    xMm: leftMargin + snappedRelX,
+    yMm: topMargin + snappedRelY,
   };
 }
 
-function getSafeAreaStyle(side: "odd" | "even"): CSSProperties {
-  const leftMargin = side === "odd" ? BINDING_MARGIN_MM : OUTER_MARGIN_MM;
-  const rightMargin = side === "odd" ? OUTER_MARGIN_MM : BINDING_MARGIN_MM;
+function clampBlock(
+  layoutBlock: PlannerLayoutBlock,
+  side: "odd" | "even",
+  bindingMarginMm: number,
+  pattern: string = "blank"
+) {
+  if (layoutBlock.type === "page_background") return layoutBlock;
+  const { leftMargin, rightMargin, topMargin, bottomMargin } = getDynamicMargins(side, bindingMarginMm, pattern);
+  const availableWidth = A5_WIDTH_MM - leftMargin - rightMargin;
+  const availableHeight = A5_HEIGHT_MM - topMargin - bottomMargin;
+
+  const [stepX, stepY] = getGridSnapSteps(pattern as any);
+  const clampedWidth = Math.min(layoutBlock.widthMm, availableWidth);
+  const clampedHeight = Math.min(layoutBlock.heightMm, availableHeight);
+
+  const maxRelativeX = Math.floor((availableWidth - clampedWidth) / stepX) * stepX;
+  const maxRelativeY = Math.floor((availableHeight - clampedHeight) / stepY) * stepY;
+
+  const currentRelativeX = layoutBlock.xMm - leftMargin;
+  const currentRelativeY = layoutBlock.yMm - topMargin;
+
+  const clampedRelativeX = Math.max(0, Math.min(maxRelativeX, currentRelativeX));
+  const clampedRelativeY = Math.max(0, Math.min(maxRelativeY, currentRelativeY));
+
+  return {
+    ...layoutBlock,
+    widthMm: clampedWidth,
+    heightMm: clampedHeight,
+    xMm: leftMargin + clampedRelativeX,
+    yMm: topMargin + clampedRelativeY,
+  };
+}
+
+function getSafeAreaStyle(side: "odd" | "even", bindingMarginMm: number, pattern: string = "blank"): CSSProperties {
+  const { leftMargin, rightMargin, topMargin, bottomMargin } = getDynamicMargins(side, bindingMarginMm, pattern);
 
   return {
     left: `${(leftMargin / A5_WIDTH_MM) * 100}%`,
     right: `${(rightMargin / A5_WIDTH_MM) * 100}%`,
-    top: `${(CUT_MARGIN_MM / A5_HEIGHT_MM) * 100}%`,
-    bottom: `${(CUT_MARGIN_MM / A5_HEIGHT_MM) * 100}%`,
+    top: `${(topMargin / A5_HEIGHT_MM) * 100}%`,
+    bottom: `${(bottomMargin / A5_HEIGHT_MM) * 100}%`,
   };
 }
 

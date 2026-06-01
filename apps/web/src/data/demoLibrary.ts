@@ -1,57 +1,5 @@
 import type { PlannerPage, PlannerTask, ScheduleBlock, Shelf } from "../types/library";
 
-export const shelves: Shelf[] = [
-  {
-    id: "trabalho",
-    name: "Estante Trabalho",
-    books: [
-      { id: "projeto-x", shelfId: "trabalho", title: "Projeto X 2024", pages: 240, color: "#C2773A", dark: "#A8622C", label: "Q1", createdAt: "2024-01-08", updatedAt: "2026-05-13" },
-      { id: "reunioes", shelfId: "trabalho", title: "Book Reunioes", pages: 80, color: "#8A9A7A", dark: "#7A8A6A", createdAt: "2024-02-02", updatedAt: "2026-05-10" },
-      { id: "clientes", shelfId: "trabalho", title: "Gestao Clientes", pages: 160, color: "#8EA898", dark: "#7A9486", label: "VIP", createdAt: "2024-03-12", updatedAt: "2026-05-09" },
-      { id: "financeiro", shelfId: "trabalho", title: "Financeiro", pages: 80, color: "#C9A4A0", dark: "#B58E8A", createdAt: "2024-04-01", updatedAt: "2026-04-28" },
-      { id: "estrategia", shelfId: "trabalho", title: "Estrategia 2024", pages: 160, color: "#9B8B7A", dark: "#8A7A6A", createdAt: "2024-01-15", updatedAt: "2026-05-01" },
-    ],
-  },
-  {
-    id: "pessoal",
-    name: "Estante Pessoal",
-    books: [
-      { id: "diario", shelfId: "pessoal", title: "Diario Gratidao", pages: 240, color: "#8B6F4E", dark: "#7A5E40", createdAt: "2024-05-18", updatedAt: "2026-05-12" },
-      { id: "planos", shelfId: "pessoal", title: "Planos 2025", pages: 160, color: "#7E8FA0", dark: "#6E7F90", createdAt: "2025-01-02", updatedAt: "2026-03-21" },
-      { id: "leituras", shelfId: "pessoal", title: "Leituras", pages: 80, color: "#C4B4A0", dark: "#B0A08E", createdAt: "2024-09-07", updatedAt: "2026-04-12" },
-    ],
-  },
-];
-
-export const pages: PlannerPage[] = [
-  { id: "p001", title: "Semana 1 - 15 Jan", date: "15 jan", template: "daily" },
-  { id: "p002", title: "Plano de Entregas", date: "10 jan", template: "notes" },
-  { id: "p003", title: "Reuniao de Alinhamento", date: "15 jan", template: "meeting" },
-  { id: "p004", title: "Semana 2 - 22 Jan", date: "22 jan", template: "daily" },
-  { id: "p005", title: "Retrospectiva Sprint 1", date: "26 jan", template: "notes" },
-];
-
-export const initialTasks: PlannerTask[] = [
-  { id: 1, text: "Reuniao de alinhamento com time", done: true },
-  { id: 2, text: "Finalizar prototipo da estante", done: false },
-  { id: 3, text: "Review do sprint com cliente", done: false },
-  { id: 4, text: "Documentar decisoes de design", done: false },
-  { id: 5, text: "Enviar proposta atualizada", done: false },
-];
-
-export const schedule: ScheduleBlock[] = [
-  { time: "09h", label: "Stand-up diario", kind: "meeting" },
-  { time: "10h", label: "Design Sprint", kind: "focus" },
-  { time: "11h", label: "Design Sprint", kind: "focus" },
-  { time: "12h", label: "Almoco", kind: "personal" },
-  { time: "13h", label: null, kind: null },
-  { time: "14h", label: "Review cliente", kind: "meeting" },
-  { time: "15h", label: "Foco - prototipo", kind: "focus" },
-  { time: "16h", label: null, kind: null },
-  { time: "17h", label: null, kind: null },
-  { time: "18h", label: "Wrap-up", kind: "personal" },
-];
-
 /**
  * Generates all pages for the premium "Agenda Padrão 2026"
  */
@@ -106,7 +54,6 @@ export function generateAgenda2026Pages(title: string, description: string): Pla
     const mIndex = date.getMonth();
     const mStr = monthsShort[mIndex];
     const wStr = weekdays[date.getDay()];
-    const fullDateText = `${wStr}-feira, ${dayVal} de ${monthsLong[mIndex]} de 2026`;
 
     dailyPages.push({
       id: `d-2026-${(mIndex + 1).toString().padStart(2, "0")}-${dStr}`,
@@ -145,3 +92,81 @@ export function generateAgenda2026Pages(title: string, description: string): Pla
 
   return [coverPage, calendarPage, goalsPage, ...dailyPages];
 }
+
+export const pages: PlannerPage[] = [
+  { id: "p001", title: "Semana 1 - 15 Jan", date: "15 jan", template: "daily" },
+  { id: "p002", title: "Plano de Entregas", date: "10 jan", template: "notes" },
+  { id: "p003", title: "Reuniao de Alinhamento", date: "15 jan", template: "meeting" },
+  { id: "p004", title: "Semana 2 - 22 Jan", date: "22 jan", template: "daily" },
+  { id: "p005", title: "Retrospectiva Sprint 1", date: "26 jan", template: "notes" },
+];
+
+export const initialTasks: PlannerTask[] = [
+  { id: 1, text: "Reuniao de alinhamento com time", done: true },
+  { id: 2, text: "Finalizar prototipo da estante", done: false },
+  { id: 3, text: "Review do sprint com cliente", done: false },
+  { id: 4, text: "Documentar decisoes de design", done: false },
+  { id: 5, text: "Enviar proposta atualizada", done: false },
+];
+
+export const schedule: ScheduleBlock[] = [
+  { time: "09h", label: "Stand-up diario", kind: "meeting" },
+  { time: "10h", label: "Design Sprint", kind: "focus" },
+  { time: "11h", label: "Design Sprint", kind: "focus" },
+  { time: "12h", label: "Almoco", kind: "personal" },
+  { time: "13h", label: null, kind: null },
+  { time: "14h", label: "Review cliente", kind: "meeting" },
+  { time: "15h", label: "Foco - prototipo", kind: "focus" },
+  { time: "16h", label: null, kind: null },
+  { time: "17h", label: null, kind: null },
+  { time: "18h", label: "Wrap-up", kind: "personal" },
+];
+
+export const shelves: Shelf[] = [
+  {
+    id: "trabalho",
+    name: "Estante Trabalho",
+    books: [
+      { 
+        id: "estrategia", 
+        shelfId: "trabalho", 
+        title: "Estratégia 2026", 
+        pages: 160, 
+        color: "#C2773A", 
+        dark: "#A8622C", 
+        createdAt: "2026-01-15", 
+        updatedAt: "2026-05-29",
+        description: "Planejamento estratégico de negócios, metas e expansão da empresa.",
+        customPages: generateAgenda2026Pages("Estratégia 2026", "Planejamento estratégico de negócios e expansão."),
+        coverDesignerItems: [
+          {
+            id: "default-front-label",
+            type: "label",
+            name: "ESTRATÉGIA 2026",
+            x: Math.round(493 + 38 + 246.5),
+            y: 260,
+            scale: 1.2,
+            rotation: 0,
+            shape: "rectangular",
+            background: "sticker",
+            color: "#1c1917",
+            font: "serif"
+          },
+          {
+            id: "default-spine-label",
+            type: "label",
+            name: "ESTRATÉGIA 2026",
+            x: Math.round(493 + 38 / 2),
+            y: 357,
+            scale: 0.9,
+            rotation: -90,
+            shape: "rectangular",
+            background: "sticker",
+            color: "#1c1917",
+            font: "sans"
+          }
+        ]
+      }
+    ]
+  }
+];

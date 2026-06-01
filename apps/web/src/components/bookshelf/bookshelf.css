@@ -156,6 +156,73 @@
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.2), transparent);
 }
 
+/* 3D joint crease effects representing physical "canos de abertura" on 2D Spines */
+.book-spine__joint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.15) 0%, rgba(255, 255, 255, 0.2) 40%, rgba(0, 0, 0, 0.16) 100%);
+  pointer-events: none;
+}
+
+.book-spine__joint--left {
+  left: 4px;
+  box-shadow: inset 1px 0 1px rgba(0, 0, 0, 0.08), 1px 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.book-spine__joint--right {
+  right: 4px;
+  box-shadow: inset -1px 0 1px rgba(0, 0, 0, 0.08), -1px 0 2px rgba(255, 255, 255, 0.12);
+}
+
+/* Premium styled shelf unit arrows for horizontal scrolling */
+.shelf-unit__arrow {
+  position: absolute;
+  top: calc(50% - 10px);
+  transform: translateY(-50%) scale(0.9);
+  z-index: 10;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(45, 36, 32, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 253, 246, 0.92);
+  color: var(--color-secondary);
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shelf-unit__arrow.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.shelf-unit__arrow--left {
+  left: 12px;
+}
+
+.shelf-unit__arrow--right {
+  right: 12px;
+}
+
+.shelf-unit__arrow:hover {
+  background: #ffffff;
+  color: var(--color-accent);
+  border-color: rgba(194, 119, 58, 0.4);
+  box-shadow: 0 6px 16px rgba(80, 50, 20, 0.12);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.shelf-unit__arrow:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
 .shelf-unit {
   position: relative;
   min-width: 0;
@@ -366,6 +433,7 @@
   white-space: nowrap;
 }
 
+/* Botão Close padrão na visualização do popover de livro */
 .book-focus__title button {
   position: absolute;
   right: 0;
@@ -374,9 +442,12 @@
   width: 24px;
   height: 24px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   font-size: 16px;
   line-height: 1;
-  padding-bottom: 2.5px;
 }
 
 .book-focus__title button:hover {
@@ -741,6 +812,34 @@
   transform: scale(0.96);
 }
 
+/* Centralização pixel-perfect com flexbox para o ícone X */
+.book-focus__close-btn {
+  position: absolute !important;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+}
+
+.book-focus__close-btn:hover {
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+.book-focus__close-btn:active {
+  transform: translateY(-50%) scale(0.96) !important;
+}
+
+.book-focus__close-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 /* Setas de navegação no overlay do livro */
 .book-focus__arrow {
   position: absolute;
@@ -844,7 +943,12 @@
     width: 28px;
     height: 28px;
     font-size: 18px;
-    padding-bottom: 3.5px;
+    padding: 0;
+  }
+
+  .book-focus__close-btn {
+    width: 28px !important;
+    height: 28px !important;
   }
 
   .book-focus__meta {

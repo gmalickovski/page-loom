@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Printer } from "lucide-react";
 
 export interface TopBarPart {
   label: string;
@@ -10,11 +10,12 @@ interface TopBarProps {
   showBack: boolean;
   onBack: () => void;
   compact?: boolean;
+  onAdminClick?: () => void;
 }
 
-export function TopBar({ parts, showBack, onBack, compact = false }: TopBarProps) {
+export function TopBar({ parts, showBack, onBack, compact = false, onAdminClick }: TopBarProps) {
   return (
-    <header className={`top-bar ${compact ? "top-bar--compact" : ""}`}>
+    <header className={`top-bar ${compact ? "top-bar--compact" : ""}`} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
       {showBack && (
         <button className="icon-button" type="button" onClick={onBack} aria-label="Voltar">
           <ChevronLeft size={20} />
@@ -38,6 +39,18 @@ export function TopBar({ parts, showBack, onBack, compact = false }: TopBarProps
           );
         })}
       </nav>
+      {onAdminClick && (
+        <button 
+          className="icon-button" 
+          type="button" 
+          onClick={onAdminClick} 
+          aria-label="Painel de Impressão Admin"
+          title="Painel de Impressão Admin"
+          style={{ marginLeft: 'auto', marginRight: '8px' }}
+        >
+          <Printer size={18} />
+        </button>
+      )}
     </header>
   );
 }

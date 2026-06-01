@@ -1,7 +1,7 @@
 export type DeviceMode = "mobile" | "tablet" | "desktop";
-export type ScreenName = "home" | "shelf" | "contents" | "planner" | "create" | "templates" | "template-editor";
+export type ScreenName = "home" | "shelf" | "contents" | "planner" | "create" | "templates" | "template-editor" | "admin-print";
 export type ScheduleKind = "meeting" | "focus" | "personal";
-export type PageTemplate = "daily" | "notes" | "meeting" | "cover" | "calendar" | "goals" | "custom";
+export type PageTemplate = "daily" | "notes" | "meeting" | "cover" | "calendar" | "goals" | "custom" | "separator";
 export type PaperPattern = "blank" | "lined" | "dot_grid" | "grid";
 export type PaperTone = "offset" | "pollen" | "recycled" | "rice" | "black";
 export type PlannerBlockType =
@@ -18,7 +18,9 @@ export type PlannerBlockType =
   | "eisenhower"
   | "notes"
   | "photo"
-  | "quote";
+  | "quote"
+  | "separator"
+  | "password_tracker";
 
 export interface PlannerLayoutBlock {
   id: string;
@@ -29,6 +31,7 @@ export interface PlannerLayoutBlock {
   yMm: number;
   widthMm: number;
   heightMm: number;
+  pageSide?: "left" | "right";
 }
 
 export interface PlannerInteriorSection {
@@ -40,11 +43,19 @@ export interface PlannerInteriorSection {
   paperTone: PaperTone;
   blocks: PlannerLayoutBlock[];
   pageNumberMode: "auto" | "manual" | "none";
+  layoutMode?: "single" | "double";
+  divider?: {
+    color: string;
+    label: string;
+    tabPosition: number;
+  };
+  singlePageSide?: "odd" | "even";
 }
 
 export interface PlannerInteriorPlan {
   format: "A5";
   capacity: 80 | 160 | 240;
+  holePunching: "none" | "discs" | "binder";
   bindingMarginMm: number;
   outerMarginMm: number;
   topMarginMm: number;

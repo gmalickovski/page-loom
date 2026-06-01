@@ -359,13 +359,6 @@
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.2);
 }
 
-.book-card__cover span {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 10px;
-}
 
 .book-card h2 {
   margin: 0;

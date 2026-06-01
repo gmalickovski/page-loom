@@ -1,16 +1,15 @@
-import { Calendar, ChevronDown, ChevronRight, LayoutTemplate, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { CalendarIcon as SketchCalendarIcon, PlusIcon as SketchPlusIcon } from "../ui";
 import { useState } from "react";
 import type { Shelf } from "../../types/library";
 
 interface SidebarNavProps {
   shelves: Shelf[];
   activeShelfId?: string;
-  templatesActive?: boolean;
   onShelf: (shelf: Shelf) => void;
-  onTemplates?: () => void;
 }
 
-export function SidebarNav({ shelves, activeShelfId, templatesActive = false, onShelf, onTemplates }: SidebarNavProps) {
+export function SidebarNav({ shelves, activeShelfId, onShelf }: SidebarNavProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ trabalho: true });
 
   return (
@@ -22,12 +21,8 @@ export function SidebarNav({ shelves, activeShelfId, templatesActive = false, on
 
       <div className="sidebar__quick">
         <button type="button">
-          <Calendar size={20} />
+          <SketchCalendarIcon size={20} />
           Hoje
-        </button>
-        <button type="button" className={templatesActive ? "is-active" : ""} onClick={onTemplates}>
-          <LayoutTemplate size={20} />
-          Templates
         </button>
       </div>
 
@@ -68,7 +63,7 @@ export function SidebarNav({ shelves, activeShelfId, templatesActive = false, on
 
       <div className="sidebar__footer">
         <button type="button">
-          <Plus size={20} />
+          <SketchPlusIcon size={20} />
           Nova estante
         </button>
       </div>

@@ -17,6 +17,144 @@ import type { BookClickOrigin, CoverDesignerItem, PlannerBook, PlannerInteriorPl
 import { STICKERS } from "../data/stickers";
 import type { StickerDef } from "../data/stickers";
 
+export function BookCoverThumbnail({ book, className, style }: { book: PlannerBook; className: string; style?: React.CSSProperties }) {
+  const hasCoverImage = !!(book.coverFrontImage || book.coverImage);
+  
+  // Find any custom designed label on the front cover from designer items
+  const spineWidth = book.pages === 80 ? 20 : book.pages === 160 ? 38 : 56;
+  const frontCoverOffset = 493 + spineWidth;
+  const frontLabel = book.coverDesignerItems?.find(
+    (item) => item.type === "label" && (item.id === "default-front-label" || item.x > frontCoverOffset)
+  );
+
+  const bgStyle: React.CSSProperties = {
+    backgroundColor: book.color,
+    position: "relative",
+    overflow: "hidden",
+    boxShadow: "2px 2px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)",
+    border: "1px solid rgba(0,0,0,0.12)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "2px 5px 5px 2px",
+    width: "100%",
+    height: "100%",
+    ...style
+  };
+
+  if (book.coverFrontImage) {
+    bgStyle.backgroundImage = `url(${book.coverFrontImage})`;
+    bgStyle.backgroundSize = "cover";
+    bgStyle.backgroundPosition = "center";
+  } else if (book.coverImage) {
+    bgStyle.backgroundImage = `url(${book.coverImage})`;
+    bgStyle.backgroundSize = "200% 100%";
+    bgStyle.backgroundPosition = "right center";
+  }
+
+  // Calculate coordinates if custom front label exists to show pixel-perfect miniature label
+  const renderCustomFrontLabel = () => {
+    if (!frontLabel) return null;
+    
+    // Position relative to front cover canvas size (493 wide by 714 high)
+    const relX = (frontLabel.x - frontCoverOffset) / 493;
+    const relY = frontLabel.y / 714;
+    
+    const shape = frontLabel.shape || "rounded";
+    const background = frontLabel.background || "sticker";
+    
+    const borderRadius = 
+      shape === "pill" 
+        ? "999px" 
+        : shape === "circular" 
+          ? "50%" 
+          : shape === "rounded" 
+            ? "1.5px" 
+            : "0px";
+            
+    const borderStyle = background === "transparent" ? "none" : "0.5px solid rgba(0, 0, 0, 0.08)";
+    const bgStyleStyle = background === "transparent" ? "transparent" : "#ffffff";
+    const fontStyle = frontLabel.font === "sans" ? "sans-serif" : frontLabel.font === "mono" ? "monospace" : "Georgia, serif";
+    
+    return (
+      <span style={{
+        position: "absolute",
+        left: `${relX * 100}%`,
+        top: `${relY * 100}%`,
+        transform: `translate(-50%, -50%) rotate(${frontLabel.rotation || 0}deg)`,
+        backgroundColor: bgStyleStyle,
+        border: borderStyle,
+        borderRadius: borderRadius,
+        padding: "1px 2px",
+        fontSize: "4.5px", // elegant miniature visual
+        fontWeight: "bold",
+        color: frontLabel.color || "#1c1917",
+        fontFamily: fontStyle,
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        boxShadow: background === "transparent" ? "none" : "0.5px 0.5px 1.5px rgba(0,0,0,0.06)",
+        maxWidth: "80%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        lineHeight: 1,
+      }}>
+        {frontLabel.name}
+      </span>
+    );
+  };
+
+  return (
+    <span className={className} style={bgStyle}>
+      {/* 3D joint crease effects representing physical "canos de abertura" */}
+      <span style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: "3px",
+        width: "2.5px",
+        background: "linear-gradient(to right, rgba(0,0,0,0.12) 0%, rgba(255,255,255,0.15) 40%, rgba(0,0,0,0.15) 100%)",
+        pointerEvents: "none"
+      }} />
+      <span style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: "3px",
+        background: "linear-gradient(to right, rgba(0,0,0,0.2), transparent)",
+        pointerEvents: "none"
+      }} />
+
+      {/* Miniature styled label inside if no custom cover image exists */}
+      {!hasCoverImage && (
+        frontLabel ? renderCustomFrontLabel() : (
+          <span style={{
+            padding: "1px 3px",
+            border: "0.5px dashed rgba(45,36,32,0.22)",
+            borderRadius: "1px",
+            backgroundColor: "#fffdfa",
+            fontSize: "6.5px",
+            fontWeight: 800,
+            color: "#4a453f",
+            fontFamily: "Georgia, serif",
+            maxWidth: "84%",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            boxShadow: "1px 1px 2px rgba(0,0,0,0.05)",
+            transform: "rotate(-0.5deg)",
+            pointerEvents: "none"
+          }}>
+            {book.title.substring(0, 10)}
+          </span>
+        )
+      )}
+    </span>
+  );
+}
+
 export function LibraryScreen({
   compact,
   onShelfClick,
@@ -95,46 +233,121 @@ export function ShelfDetailScreen({
   onDismissSelected?: () => void;
   onCreateBook: () => void;
 }) {
+  const [viewMode, setViewMode] = useState<"shelf" | "list">("shelf");
+
   return (
     <main className={`screen screen-shelf ${compact ? "screen--compact" : ""}`}>
-      <div className="screen__headline">
+      <div className="screen__headline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
           <h2>{shelf.name}</h2>
-          <p>{shelf.books.length} livros</p>
+          <p>{shelf.books.length} {shelf.books.length === 1 ? "livro" : "livros"}</p>
         </div>
-        <button className="screen__headline-action" type="button" onClick={onCreateBook}>
-          <Plus size={18} />
-          Novo book
-        </button>
-      </div>
-      <div className={`screen-shelf__unit ${selectedBookId ? "is-focused" : ""}`}>
-        <ShelfUnit
-          books={shelf.books}
-          onBookClick={onBookClick}
-          selectedBookId={selectedBookId}
-          selectionClosing={selectionClosing}
-          onOpenSelected={onOpenSelected}
-          onDismissSelected={onDismissSelected}
-          scale={compact ? 0.82 : 1}
-          gap={compact ? 4 : 6}
-        />
-      </div>
-      <section className="book-list">
-        <h3>Livros</h3>
-        {shelf.books.map((book) => (
-          <button type="button" key={book.id} onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            onBookClick(book, { x: rect.left, y: rect.top, width: rect.width, height: rect.height });
-          }}>
-            <span style={{ background: book.color }} />
-            <strong>
-              {book.title}
-              {book.label && <small>{book.label}</small>}
-            </strong>
-            <ChevronRight size={18} />
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Segmented control to toggle viewMode */}
+          <div className="segmented-control" style={{ display: 'flex', gap: '4px', background: 'var(--color-bg-alt)', padding: '4px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+            <button
+              type="button"
+              onClick={() => setViewMode("shelf")}
+              style={{
+                border: '0',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: viewMode === "shelf" ? 'var(--color-accent)' : 'transparent',
+                color: viewMode === "shelf" ? '#ffffff' : 'var(--color-text)',
+                transition: 'all 0.2s',
+              }}
+            >
+              Estante
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              style={{
+                border: '0',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: viewMode === "list" ? 'var(--color-accent)' : 'transparent',
+                color: viewMode === "list" ? '#ffffff' : 'var(--color-text)',
+                transition: 'all 0.2s',
+              }}
+            >
+              Lista
+            </button>
+          </div>
+
+          <button className="screen__headline-action" type="button" onClick={onCreateBook}>
+            <Plus size={18} />
+            Novo book
           </button>
-        ))}
-      </section>
+        </div>
+      </div>
+
+      {viewMode === "shelf" ? (
+        <div className={`screen-shelf__unit ${selectedBookId ? "is-focused" : ""}`}>
+          <ShelfUnit
+            books={shelf.books}
+            onBookClick={onBookClick}
+            selectedBookId={selectedBookId}
+            selectionClosing={selectionClosing}
+            onOpenSelected={onOpenSelected}
+            onDismissSelected={onDismissSelected}
+            scale={compact ? 0.82 : 1}
+            gap={compact ? 4 : 6}
+          />
+        </div>
+      ) : (
+        <section className="book-list" style={{ padding: '12px 0' }}>
+          <h3>Livros</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+            {shelf.books.map((book) => (
+              <button
+                type="button"
+                key={book.id}
+                onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onBookClick(book, { x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1.5px dashed var(--color-border)',
+                  background: 'var(--color-bg-alt)',
+                  width: '100%',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                }}
+              >
+                <BookCoverThumbnail 
+                  book={book} 
+                  className="book-list__thumb" 
+                  style={{ width: '40px', height: '56px', flexShrink: 0 }} 
+                />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <strong style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {book.title}
+                  </strong>
+                  <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                    {book.pages} páginas • {book.label || 'Padrão'}
+                  </span>
+                </div>
+                <ChevronRight size={18} style={{ color: 'var(--color-muted)' }} />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
@@ -151,9 +364,7 @@ export function BookContentsScreen({
   return (
     <main className={`screen screen-book ${compact ? "screen--compact" : ""}`}>
       <section className="book-card">
-        <div className="book-card__cover" style={{ background: book.color }}>
-          <span style={{ background: book.dark }} />
-        </div>
+        <BookCoverThumbnail book={book} className="book-card__cover" />
         <div>
           <h2>{book.title}</h2>
           {book.label && <p>{book.label}</p>}
@@ -490,6 +701,21 @@ export function CreateBookScreen({
       ctx.fillStyle = pat;
       ctx.fillRect(0, 0, totalWidth, 714);
     }
+    
+    // Draw "dois canos de abertura" (double vertical joint creases) running down the spine edges
+    const drawSpineJoint = (xPos: number) => {
+      const jointGrad = ctx.createLinearGradient(xPos - 4, 0, xPos + 4, 0);
+      jointGrad.addColorStop(0.0, "rgba(0, 0, 0, 0.12)");
+      jointGrad.addColorStop(0.3, "rgba(255, 255, 255, 0.15)");
+      jointGrad.addColorStop(0.7, "rgba(255, 255, 255, 0.0)");
+      jointGrad.addColorStop(1.0, "rgba(0, 0, 0, 0.18)");
+      
+      ctx.fillStyle = jointGrad;
+      ctx.fillRect(xPos - 4, 0, 8, 714);
+    };
+    
+    drawSpineJoint(493);
+    drawSpineJoint(493 + spineWidth);
     
     // Draw designer items
     itemsList.forEach((item) => {
@@ -1066,7 +1292,7 @@ export function CreateBookScreen({
     { title: "Identificação Geral", eyebrow: "Passo 01" },
     { title: "Formato Físico", eyebrow: "Passo 02" },
     { title: "Biblioteca", eyebrow: "Passo 03" },
-    { title: "Miolo do Planner", eyebrow: "Passo 04" },
+    { title: "Template do Planner", eyebrow: "Passo 04" },
     { title: "Resumo", eyebrow: "Passo 05" },
   ];
 
@@ -1190,7 +1416,7 @@ export function CreateBookScreen({
         <div className="create-flow-step create-flow-step--interior">
           <div className="create-flow-step__intro">
             <span>{createSteps[createStep].eyebrow}</span>
-            <p>Escolha um miolo padrao, aplique um template salvo ou crie um personalizado do zero.</p>
+            <p>Escolha um template padrao, aplique um template salvo ou crie um personalizado do zero.</p>
           </div>
           <div className="interior-source-switcher">
             <button
@@ -1362,7 +1588,7 @@ export function CreateBookScreen({
             <strong>{selectedShelf?.name ?? "Não selecionada"}</strong>
           </button>
           <button type="button" onClick={() => setCreateStep(3)}>
-            <span>Miolo</span>
+            <span>Template</span>
             <strong>{interiorPageCount} pags · {selectedInteriorSection?.templateName ?? "Personalizado"}</strong>
           </button>
         </div>
@@ -1447,7 +1673,7 @@ export function CreateBookScreen({
         <div className="screen__headline">
           <div>
             <h2>Criar Novo Planner ou Agenda</h2>
-            <p>Configure as especificações físicas e miolos do seu caderno rústico</p>
+            <p>Configure as especificações físicas e templates do seu caderno rústico</p>
           </div>
         </div>
 
@@ -1521,11 +1747,11 @@ export function CreateBookScreen({
               </div>
             </div>
 
-            {/* Passo 4: Miolos do Sistema */}
+            {/* Passo 4: Templates do Sistema */}
             <div className="wizard-section">
               <span className="wizard-section__badge">04</span>
-              <h3>Modelos de Miolo Inteligentes</h3>
-              <label>Escolha a predefinição interna de páginas para o miolo:</label>
+              <h3>Modelos de Template Inteligentes</h3>
+              <label>Escolha a predefinição interna de páginas para o template:</label>
               <div className="wizard-templates-list">
                 <button
                   type="button"
